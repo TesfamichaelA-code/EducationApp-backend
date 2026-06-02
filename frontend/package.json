@@ -1,0 +1,9 @@
+{
+  "name": "learndeck-frontend-placeholder",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Placeholder until Next.js 15 frontend lands in Block D",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

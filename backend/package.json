@@ -1,0 +1,45 @@
+{
+  "name": "learndeck-backend",
+  "version": "1.0.0",
+  "description": "LearnDeck education platform backend (NestJS 11)",
+  "private": true,
+  "scripts": {
+    "prebuild": "rimraf dist",
+    "build": "nest build",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/swagger": "^11.0.0",
+    "@nestjs/throttler": "^6.4.0",
+    "axios": "^1.7.7",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "helmet": "^8.0.0",
+    "joi": "^17.13.3",
+    "nestjs-pino": "^4.1.0",
+    "pino-http": "^10.3.0",
+    "pino-pretty": "^11.3.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.1",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.0",
+    "rimraf": "^5.0.10",
+    "ts-loader": "^9.5.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.5.4"
+  }
+}

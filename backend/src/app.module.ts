@@ -23,6 +23,11 @@ import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { envValidationSchema } from './config/env.validation';
+import { CoursesModule } from './courses/courses.module';
+import { EnrollmentsModule } from './enrollments/enrollments.module';
+import { FlashcardsModule } from './flashcards/flashcards.module';
+import { NotesModule } from './notes/notes.module';
+import { ResourcesModule } from './resources/resources.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -60,6 +65,11 @@ import { UsersModule } from './users/users.module';
     }),
     UsersModule,
     AuthModule,
+    CoursesModule,
+    EnrollmentsModule,
+    FlashcardsModule,
+    NotesModule,
+    ResourcesModule,
     AiModule,
   ],
   controllers: [AppController],

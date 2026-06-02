@@ -10,10 +10,17 @@
  * quiz generation) that depend on this same LLM_PROVIDER token.
  */
 
-import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { UserDocument, UserRole } from '../users/schemas/user.schema';
+import { AiFeaturesService } from './ai-features.service';
+import { ExplainDto } from './dto/explain.dto';
+import { FlashcardsFromTextDto } from './dto/flashcards-from-text.dto';
 import { GenerateTextDto } from './dto/generate-text.dto';
 import { LLM_PROVIDER, LlmProvider } from './providers/llm-provider.interface';
 
@@ -21,7 +28,10 @@ import { LLM_PROVIDER, LlmProvider } from './providers/llm-provider.interface';
 @ApiBearerAuth()
 @Controller('ai')
 export class AiController {
-  constructor(@Inject(LLM_PROVIDER) private readonly llm: LlmProvider) {}
+  constructor(
+    @Inject(LLM_PROVIDER) private readonly llm: LlmProvider,
+    private readonly features: AiFeaturesService,
+  ) {}
 
   @Get('ping')
   @ApiOperation({ summary: 'AI adapter heartbeat (no upstream call)' })
@@ -45,5 +55,26 @@ export class AiController {
       systemInstruction: dto.systemInstruction,
     });
     return { provider: this.llm.name, text };
+  }
+
+  @Post('flashcards/from-text')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.TEACHER, UserRole.ADMIN)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @ApiOperation({
+    summary: 'Generate flashcards from study material; optionally save to a deck (teacher/admin)',
+  })
+  flashcardsFromText(
+    @CurrentUser() user: UserDocument,
+    @Body() dto: FlashcardsFromTextDto,
+  ) {
+    return this.features.generateFlashcards(user, dto);
+  }
+
+  @Post('explain')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: 'Ask the AI tutor for a concise explanation' })
+  explain(@Body() dto: ExplainDto) {
+    return this.features.explain(dto);
   }
 }

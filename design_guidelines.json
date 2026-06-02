@@ -1,0 +1,100 @@
+{
+  "project_vision": "An epic, portfolio-defining ed-tech platform combining Google Classroom management with AnkiDroid spaced repetition. Designed as a cinematic, distraction-free 'Focus Mode' SaaS, completely distinct from generic LMS templates.",
+  "theme_and_archetype": {
+    "theme": "Dark",
+    "archetype_id": "4",
+    "archetype_name": "Swiss & High-Contrast (Dark Mode Variant)",
+    "rationale": "Authority, Clarity, Truth. An educational tool needs strict hierarchy to reduce cognitive load. A stark, monochrome dark mode provides a cinematic, premium feel while maximizing focus during study sessions."
+  },
+  "colors": {
+    "background_base": "#050505",
+    "surface_primary": "#0A0A0A",
+    "surface_secondary": "#121212",
+    "border_subtle": "rgba(255, 255, 255, 0.08)",
+    "border_focus": "rgba(255, 255, 255, 0.2)",
+    "text_primary": "#F4F4F5",
+    "text_secondary": "#A1A1AA",
+    "text_tertiary": "#52525B",
+    "accent_primary": "#FFFFFF",
+    "action_colors": {
+      "anki_again": "#FF3B30",
+      "anki_hard": "#FF9500",
+      "anki_good": "#34C759",
+      "anki_easy": "#007AFF"
+    }
+  },
+  "typography": {
+    "rules": "DO NOT USE Inter. Restrict font weights to radical contrasts (Light vs Black).",
+    "fonts": {
+      "headings": "Cabinet Grotesk",
+      "body": "IBM Plex Sans",
+      "mono_and_data": "JetBrains Mono"
+    },
+    "scale": {
+      "h1_hero": "text-5xl sm:text-6xl tracking-tighter font-black leading-none",
+      "h2_section": "text-3xl sm:text-4xl tracking-tight font-bold",
+      "h3_card": "text-xl sm:text-2xl tracking-tight font-medium",
+      "body": "text-base leading-relaxed text-secondary",
+      "labels_and_meta": "text-xs tracking-[0.2em] uppercase font-mono text-tertiary"
+    }
+  },
+  "spacing_and_layout": {
+    "philosophy": "Generous Spacing + Technical Grids. Never center by default.",
+    "marketing_grid": "Mode A: 'Tetris' Grid. gap-8 to gap-12. Asymmetrical bento layouts.",
+    "dashboard_grid": "Mode B: 'Control Room' Grid. gap-1px (border collapse style) or tight gap-4. Strict data density.",
+    "containers": "Use purely structural HTML (div, section) for layouts. Avoid overusing pre-built layout components that constrain asymmetry.",
+    "surfaces": {
+      "headers": "Crystal Glass - bg-black/60, backdrop-blur-2xl, border-b border-white/10",
+      "cards": "Flat solid backgrounds (surface_secondary), sharp corners (rounded-none or max rounded-sm), 1px border-white/10, NO shadows.",
+      "study_mode": "Pure #000000 background, zero distractions. The active card uses 'Tracing Beam' glow."
+    }
+  },
+  "component_strategies": {
+    "navigation": "Fixed header, Crystal Glass effect. Desktop links must be fully visible. Primary CTA is solid white text-black.",
+    "marketing_hero": "Large expressive typography (Cabinet Grotesk). Abstract dark architecture image in background with bg-black/50 overlay. Bento grid stats below.",
+    "dashboards": "Role-based. Use Shadcn components (tables, charts, select) but strip their default borders and radii to match the sharp, cardless brutalist aesthetic. Use Recharts for analytics with monochrome lines and minimal axes.",
+    "flashcard_study_mode": "THE HEADLINER. Full-screen cinematic mode. Center flashcard component. Uses Framer Motion for 3D rotateX/rotateY flip on Spacebar press. Numbers 1-4 mapped to rate quality. Glassmorphic progress bar floating at bottom.",
+    "split_screen_notes": "Grid Borders layout. 50/50 split. Left: Tiptap Markdown Editor (distraction-free, minimal toolbar). Right: PDF Viewer (GridFS) or Live Preview. 1px solid border between them.",
+    "ai_magic_button": "Placed prominently in Deck view. Uses the 'Tracing Beam' (animated glowing border) to draw attention without being loud.",
+    "jitsi_meetings": "Embedded iframe wrapped in a sharp, 1px bordered container. Course-scoped room names dynamically generated."
+  },
+  "motion_and_interactions": {
+    "hover_states": "Text color shifts (e.g., text-secondary to text-primary), subtle background lightness shifts. ALWAYS define explicit hover colors.",
+    "focus_states": "High contrast 2px white ring.",
+    "page_transitions": "Smooth momentum scrolling (Lenis) for marketing pages. Staggered fade-up for dashboard bento grids.",
+    "flashcard_flip": "Framer motion 3D rotation. Must respect prefers-reduced-motion."
+  },
+  "media_and_assets": {
+    "iconography": "Phosphor Icons (@phosphor-icons/react) - Duotone weight for marketing, Regular for dashboards.",
+    "images": [
+      {
+        "category": "hero_background",
+        "url": "https://images.pexels.com/photos/4258834/pexels-photo-4258834.jpeg",
+        "description": "High-contrast monochrome geometric stairs for the landing page background. Adds depth without distracting from typography."
+      },
+      {
+        "category": "marketing_student_testimonial",
+        "url": "https://images.pexels.com/photos/9158720/pexels-photo-9158720.jpeg",
+        "description": "Focused student reading, to be used in the marketing 'Why us' or Testimonial section."
+      },
+      {
+        "category": "dashboard_empty_state_texture",
+        "url": "https://images.unsplash.com/photo-1498262257252-c282316270bc",
+        "description": "Dark abstract gray digital texture to use as a subtle background pattern for empty states or generic course thumbnails."
+      }
+    ]
+  },
+  "accessibility_and_testing": {
+    "contrast": "Ensure all text meets WCAG AA 4.5:1. Active UI elements must have clear focus rings.",
+    "testing": "All interactive elements, buttons, inputs, and flashcards MUST include data-testid attributes (e.g., data-testid='flashcard-flip-btn')."
+  },
+  "instructions_to_main_agent": [
+    "CRITICAL OVERRIDE: Write components in .jsx / .js files. DO NOT USE .tsx files, as per the critical rules provided. Adjust Next.js config or imports as needed to support .js/.jsx.",
+    "Implement Shadcn UI using pure Tailwind CSS utility classes customized for a sharp, brutalist, flat design (no rounded corners, no soft shadows).",
+    "For Flashcard study mode, prioritize keyboard events (Space to flip, 1-4 for Anki scoring) and bind them to the UI state.",
+    "Use Tiptap for the notes editor. Build a custom minimal toolbar that fits the stark aesthetic.",
+    "Embed Jitsi Meet using their external API script or iframe, ensuring the container respects the dark mode theme.",
+    "Integrate Phosphor icons as the default icon set.",
+    "Use framer-motion for the flashcard flip and staggered bento grid entrances."
+  ]
+}

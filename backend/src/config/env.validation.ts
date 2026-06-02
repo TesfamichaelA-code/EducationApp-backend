@@ -25,13 +25,19 @@ export const envValidationSchema = Joi.object({
   GEMINI_API_KEY: Joi.string().allow('').optional(),
   GEMINI_MODEL: Joi.string().default('gemini-2.5-flash'),
 
-  // ── Database (wired in Block B) ────────────────────────────────────────────
-  MONGO_URL: Joi.string().optional(),
-  DB_NAME: Joi.string().optional(),
+  // ── Database ───────────────────────────────────────────────────────────────
+  MONGO_URL: Joi.string().required(),
+  DB_NAME: Joi.string().required(),
 
-  // ── Auth (wired in Block B) ────────────────────────────────────────────────
-  JWT_ACCESS_SECRET: Joi.string().optional(),
-  JWT_REFRESH_SECRET: Joi.string().optional(),
+  // ── Auth ───────────────────────────────────────────────────────────────────
+  JWT_ACCESS_SECRET: Joi.string().min(32).required(),
+  JWT_REFRESH_SECRET: Joi.string().min(32).required(),
   JWT_ACCESS_TTL: Joi.string().default('15m'),
   JWT_REFRESH_TTL: Joi.string().default('7d'),
+
+  // ── Admin seed ─────────────────────────────────────────────────────────────
+  // If unset, the seed step is skipped silently — useful for ephemeral tests.
+  ADMIN_EMAIL: Joi.string().email().optional(),
+  ADMIN_PASSWORD: Joi.string().min(8).optional(),
+  ADMIN_NAME: Joi.string().optional(),
 });

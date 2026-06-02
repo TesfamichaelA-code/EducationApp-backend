@@ -1,0 +1,19 @@
+/**
+ * UsersModule — provides UsersService to the rest of the app and exposes
+ * the Mongoose User model so AuthModule can inject it transitively.
+ */
+
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+
+import { User, UserSchema } from './schemas/user.schema';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
+
+@Module({
+  imports: [MongooseModule.forFeature([{ name: User.name, schema: UserSchema }])],
+  controllers: [UsersController],
+  providers: [UsersService],
+  exports: [UsersService, MongooseModule],
+})
+export class UsersModule {}

@@ -11,13 +11,14 @@
  */
 
 import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
 import { GenerateTextDto } from './dto/generate-text.dto';
 import { LLM_PROVIDER, LlmProvider } from './providers/llm-provider.interface';
 
 @ApiTags('ai')
+@ApiBearerAuth()
 @Controller('ai')
 export class AiController {
   constructor(@Inject(LLM_PROVIDER) private readonly llm: LlmProvider) {}

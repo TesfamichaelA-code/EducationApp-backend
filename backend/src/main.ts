@@ -18,18 +18,24 @@
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap(): Promise<void> {
   // bufferLogs:true so early lifecycle logs are flushed through Pino, not the default logger.
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
+
+  // We're behind the platform's reverse proxy — trust X-Forwarded-For so
+  // req.ip resolves to the real client IP for brute-force tracking.
+  app.set('trust proxy', 1);
 
   const config = app.get(ConfigService);
 
@@ -41,6 +47,9 @@ async function bootstrap(): Promise<void> {
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
+
+  // Parse httpOnly auth cookies before any guard inspects them.
+  app.use(cookieParser());
 
   // ── Global API prefix ─────────────────────────────────────────────────────
   // Required by the platform ingress: any path under `/api/*` reaches the

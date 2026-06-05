@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    background: #050505;
+    color: #F4F4F5;
+    font-family: var(--font-body), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { font-feature-settings: "ss01", "cv11"; }
+
+  ::selection {
+    background-color: #F4F4F5;
+    color: #050505;
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+
+  *:focus-visible {
+    outline: 2px solid #F4F4F5;
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Editorial-style meta label, e.g. "01 / COURSES" */
+  .meta {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #52525B;
+  }
+
+  /* Frosted header (Crystal Glass) */
+  .glass {
+    background: rgba(5, 5, 5, 0.6);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  /* The Tracing Beam — animated glow used on AI buttons + active study card */
+  .beam-wrap {
+    position: relative;
+    isolation: isolate;
+  }
+  .beam-wrap::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+      from 0deg at 50% 50%,
+      rgba(255,255,255,0) 0deg,
+      rgba(255,255,255,0.65) 40deg,
+      rgba(255,255,255,0) 100deg,
+      rgba(255,255,255,0) 260deg,
+      rgba(255,255,255,0.35) 320deg,
+      rgba(255,255,255,0) 360deg
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    animation: beam-spin 6s linear infinite;
+    pointer-events: none;
+    z-index: -1;
+  }
+  @keyframes beam-spin { to { transform: rotate(360deg); } }
+
+  /* Control-room grid lines for dashboards */
+  .grid-lines > * {
+    border-color: rgba(255,255,255,0.08);
+  }
+}

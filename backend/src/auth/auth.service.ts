@@ -169,8 +169,12 @@ export class AuthService {
       const payload = this.jwt.verify(refreshToken, {
         secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
       }) as { sub: string };
+      // Revoke only this session; /auth/logout-all exists for "everywhere".
       await this.tokenModel
-        .updateMany({ userId: payload.sub, revoked: false }, { $set: { revoked: true } })
+        .updateOne(
+          { userId: payload.sub, tokenHash: hashRefreshToken(refreshToken) },
+          { $set: { revoked: true } },
+        )
         .exec();
     } catch {
       // best-effort: a malformed cookie shouldn't break logout

@@ -3,7 +3,9 @@
  *
  * Authorization model:
  *   • create  — TEACHER or ADMIN (enforced at controller via @Roles)
- *   • read    — any authed user
+ *   • list all — ADMIN (enforced at controller)
+ *   • read one — owner, enrolled student, or ADMIN (CourseAccessService)
+ *   • invite code — only ever serialized for the owner or ADMIN (toView)
  *   • update/delete/regenerate-code — owner or ADMIN (enforced here)
  *
  * Invite codes are 8-character uppercase hex (4 random bytes), collision-
@@ -92,6 +94,19 @@ export class CoursesService {
     this.assertOwnership(course, userId, role);
     course.inviteCode = this.newInviteCode();
     return course.save();
+  }
+
+  /**
+   * JSON view of a course for a given viewer. The invite code is the only
+   * thing standing between a stranger and enrollment, so it is stripped for
+   * anyone who is not the owner or an admin.
+   */
+  toView(course: CourseDocument, userId: string, role: UserRole): Record<string, unknown> {
+    const json = course.toJSON() as Record<string, unknown>;
+    if (course.teacherId !== userId && role !== UserRole.ADMIN) {
+      delete json.inviteCode;
+    }
+    return json;
   }
 
   private assertOwnership(course: CourseDocument, userId: string, role: UserRole): void {

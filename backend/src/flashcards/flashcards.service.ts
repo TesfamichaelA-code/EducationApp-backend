@@ -17,6 +17,7 @@ import { Model } from 'mongoose';
 import { UserRole } from '../users/schemas/user.schema';
 import { DecksService } from './decks.service';
 import { CreateFlashcardDto } from './dto/create-flashcard.dto';
+import { UpdateFlashcardDto } from './dto/update-flashcard.dto';
 import { Flashcard, FlashcardDocument } from './schemas/flashcard.schema';
 
 @Injectable()
@@ -54,6 +55,18 @@ export class FlashcardsService {
     return this.model.insertMany(docs) as unknown as Promise<FlashcardDocument[]>;
   }
 
+  /** Cards in a deck, after checking the caller may see that deck's course. */
+  async listViewable(deckId: string, userId: string, role: UserRole): Promise<FlashcardDocument[]> {
+    const deck = await this.decks.findViewable(deckId, userId, role);
+    return this.listByDeck(deck.id);
+  }
+
+  async findViewable(id: string, userId: string, role: UserRole): Promise<FlashcardDocument> {
+    const card = await this.findOne(id);
+    await this.decks.findViewable(card.deckId, userId, role);
+    return card;
+  }
+
   listByDeck(deckId: string): Promise<FlashcardDocument[]> {
     return this.model.find({ deckId }).exec();
   }
@@ -76,7 +89,7 @@ export class FlashcardsService {
     id: string,
     userId: string,
     role: UserRole,
-    dto: Partial<CreateFlashcardDto>,
+    dto: UpdateFlashcardDto,
   ): Promise<FlashcardDocument> {
     const card = await this.findOne(id);
     const deck = await this.decks.findOne(card.deckId);

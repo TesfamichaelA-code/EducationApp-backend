@@ -70,17 +70,19 @@ function CourseDetail() {
         <h1 className="font-display text-5xl lg:text-6xl font-bold tracking-tight max-w-3xl" data-testid="course-title">
           {course.title}
         </h1>
-        <div className="text-right">
-          <p className="meta mb-2">Invite code</p>
-          <p
-            className="font-mono text-2xl font-medium select-all cursor-pointer hover:text-bone-200"
-            onClick={() => navigator.clipboard?.writeText(course.inviteCode)}
-            data-testid="course-invite-code"
-            title="Click to copy"
-          >
-            {course.inviteCode}
-          </p>
-        </div>
+        {course.inviteCode && (
+          <div className="text-right">
+            <p className="meta mb-2">Invite code</p>
+            <p
+              className="font-mono text-2xl font-medium select-all cursor-pointer hover:text-bone-200"
+              onClick={() => navigator.clipboard?.writeText(course.inviteCode ?? '')}
+              data-testid="course-invite-code"
+              title="Click to copy"
+            >
+              {course.inviteCode}
+            </p>
+          </div>
+        )}
       </div>
       <p className="font-sans text-bone-200 max-w-3xl leading-relaxed mb-12">
         {course.description || 'No description.'}

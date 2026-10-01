@@ -73,7 +73,8 @@ export class GeminiProvider implements LlmProvider {
       const { data } = await this.http.post<GeminiResponse>(
         `/models/${this.defaultModel}:generateContent`,
         body,
-        { params: { key: this.apiKey } },
+        // Header rather than ?key= so the key never lands in proxy/access logs.
+        { headers: { 'x-goog-api-key': this.apiKey } },
       );
 
       // Safety filter blocked the prompt before generation — surface that

@@ -10,7 +10,8 @@ export interface Course {
   coverUrl: string;
   category: string;
   teacherId: string;
-  inviteCode: string;
+  /** Only returned to the course owner and admins. */
+  inviteCode?: string;
   published: boolean;
   createdAt: string;
   updatedAt: string;

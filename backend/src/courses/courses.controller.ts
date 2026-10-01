@@ -13,6 +13,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { CourseAccessService } from '../enrollments/course-access.service';
 import { UserDocument, UserRole } from '../users/schemas/user.schema';
 import { CoursesService } from './courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
@@ -22,7 +23,10 @@ import { UpdateCourseDto } from './dto/update-course.dto';
 @ApiBearerAuth()
 @Controller('courses')
 export class CoursesController {
-  constructor(private readonly courses: CoursesService) {}
+  constructor(
+    private readonly courses: CoursesService,
+    private readonly access: CourseAccessService,
+  ) {}
 
   @Post()
   @UseGuards(RolesGuard)
@@ -33,7 +37,9 @@ export class CoursesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List all courses' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'List all courses (admin)' })
   list() {
     return this.courses.findAll();
   }
@@ -45,9 +51,10 @@ export class CoursesController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a course by id' })
-  findOne(@Param('id') id: string) {
-    return this.courses.findOne(id);
+  @ApiOperation({ summary: 'Get a course by id (owner / enrolled student / admin)' })
+  async findOne(@Param('id') id: string, @CurrentUser() user: UserDocument) {
+    const course = await this.access.assertCanView(id, user.id, user.role);
+    return this.courses.toView(course, user.id, user.role);
   }
 
   @Patch(':id')

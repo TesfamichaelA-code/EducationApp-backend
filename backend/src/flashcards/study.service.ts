@@ -13,14 +13,15 @@
  * old material rots is the #1 anti-pattern Anki tries to prevent.
  */
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 import { EnrollmentsService } from '../enrollments/enrollments.service';
+import { UserRole } from '../users/schemas/user.schema';
 import { DecksService } from './decks.service';
 import { FlashcardsService } from './flashcards.service';
-import { Flashcard, FlashcardDocument } from './schemas/flashcard.schema';
+import { FlashcardDocument } from './schemas/flashcard.schema';
 import { ReviewState, ReviewStateDocument } from './schemas/review-state.schema';
 import { sm2 } from './sm2';
 
@@ -33,7 +34,6 @@ export interface NextCardsResult {
 export class StudyService {
   constructor(
     @InjectModel(ReviewState.name) private readonly stateModel: Model<ReviewState>,
-    @InjectModel(Flashcard.name) private readonly cardModel: Model<Flashcard>,
     private readonly decks: DecksService,
     private readonly flashcards: FlashcardsService,
     private readonly enrollments: EnrollmentsService,
@@ -51,13 +51,14 @@ export class StudyService {
    */
   async nextCards(
     userId: string,
+    role: UserRole,
     opts: { deckId?: string; limit?: number } = {},
   ): Promise<NextCardsResult> {
     const limit = Math.min(Math.max(opts.limit ?? 20, 1), 100);
 
     let cards: FlashcardDocument[];
     if (opts.deckId) {
-      cards = await this.flashcards.listByDeck(opts.deckId);
+      cards = await this.flashcards.listViewable(opts.deckId, userId, role);
     } else {
       const enrolledCourses = await this.enrollments.listForStudent(userId);
       if (enrolledCourses.length === 0) return { dueNow: [], newCards: [] };
@@ -95,13 +96,18 @@ export class StudyService {
    * implemented via "find or new"). Returning the updated state lets the
    * frontend show the next due date immediately.
    */
-  async review(userId: string, flashcardId: string, quality: number): Promise<ReviewStateDocument> {
-    const card = await this.cardModel.findById(flashcardId).exec();
-    if (!card) throw new NotFoundException('Flashcard not found');
+  async review(
+    userId: string,
+    role: UserRole,
+    flashcardId: string,
+    quality: number,
+  ): Promise<ReviewStateDocument> {
+    // Throws 404 / 403 if the card is missing or outside the caller's courses.
+    const card = await this.flashcards.findViewable(flashcardId, userId, role);
 
-    let state = await this.stateModel.findOne({ userId, flashcardId }).exec();
+    let state = await this.stateModel.findOne({ userId, flashcardId: card.id }).exec();
     if (!state) {
-      state = new this.stateModel({ userId, flashcardId });
+      state = new this.stateModel({ userId, flashcardId: card.id });
     }
 
     const next = sm2(

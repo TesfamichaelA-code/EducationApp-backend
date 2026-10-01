@@ -10,7 +10,7 @@
  *       - Global `/api` prefix (matches the Kubernetes ingress contract)
  *       - Global ValidationPipe (whitelist + transform)
  *       - Global AllExceptionsFilter for consistent error envelopes
- *       - Swagger UI at `/api/docs`
+ *       - Swagger UI at `/api/docs` (non-production, or ENABLE_SWAGGER=true)
  *   • Bind the HTTP server to 0.0.0.0:${PORT} (default 8001).
  *
  * Keep this file thin — feature wiring belongs in feature modules.
@@ -57,9 +57,10 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix('api');
 
   // ── CORS ──────────────────────────────────────────────────────────────────
-  // If FRONTEND_ORIGIN is unset (dev), allow all origins. In production, set
-  // it to a comma-separated allow-list. `credentials: true` is required so
-  // the browser sends our auth cookie / Authorization header.
+  // If FRONTEND_ORIGIN is unset (dev only — env validation makes it required
+  // in production), allow all origins. Otherwise it is a comma-separated
+  // allow-list. `credentials: true` is required so the browser sends our auth
+  // cookie / Authorization header.
   const rawOrigin = config.get<string>('FRONTEND_ORIGIN');
   const origins = rawOrigin ? rawOrigin.split(',').map((o) => o.trim()) : true;
   app.enableCors({
@@ -84,6 +85,25 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   // ── Swagger ───────────────────────────────────────────────────────────────
+  // Off in production unless ENABLE_SWAGGER=true — no need to publish a map
+  // of every endpoint to the internet.
+  const isProd = config.get<string>('NODE_ENV') === 'production';
+  const swaggerFlag = config.get<boolean | string>('ENABLE_SWAGGER');
+  const swaggerEnabled = swaggerFlag === undefined ? !isProd : String(swaggerFlag) === 'true';
+  if (swaggerEnabled) {
+    setupSwagger(app);
+  }
+
+  // ── Listen ────────────────────────────────────────────────────────────────
+  const port = Number(config.get<string>('PORT') ?? 8001);
+  await app.listen(port, '0.0.0.0');
+
+  const log = app.get(Logger);
+  log.log(`LearnDeck API listening on http://0.0.0.0:${port}/api`);
+  if (swaggerEnabled) log.log(`Swagger UI: http://0.0.0.0:${port}/api/docs`);
+}
+
+function setupSwagger(app: NestExpressApplication): void {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('LearnDeck API')
     .setDescription(
@@ -96,14 +116,6 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup('api/docs', app, document, {
     swaggerOptions: { persistAuthorization: true },
   });
-
-  // ── Listen ────────────────────────────────────────────────────────────────
-  const port = Number(config.get<string>('PORT') ?? 8001);
-  await app.listen(port, '0.0.0.0');
-
-  const log = app.get(Logger);
-  log.log(`LearnDeck API listening on http://0.0.0.0:${port}/api`);
-  log.log(`Swagger UI: http://0.0.0.0:${port}/api/docs`);
 }
 
 bootstrap().catch((err) => {

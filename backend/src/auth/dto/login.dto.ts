@@ -6,7 +6,7 @@ export class LoginDto {
   @IsEmail()
   email!: string;
 
-  @ApiProperty({ example: 'ChangeMe!2026' })
+  @ApiProperty({ example: 'your-password' })
   @IsString()
   @MinLength(1)
   password!: string;

@@ -32,7 +32,7 @@ export class StudyController {
     @Query('deckId') deckId?: string,
     @Query('limit') limit?: number,
   ) {
-    return this.study.nextCards(user.id, { deckId, limit });
+    return this.study.nextCards(user.id, user.role, { deckId, limit });
   }
 
   @Post('review/:flashcardId')
@@ -44,7 +44,7 @@ export class StudyController {
     @CurrentUser() user: UserDocument,
     @Body() dto: ReviewDto,
   ) {
-    return this.study.review(user.id, flashcardId, dto.quality);
+    return this.study.review(user.id, user.role, flashcardId, dto.quality);
   }
 
   @Get('stats')

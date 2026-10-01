@@ -27,7 +27,7 @@ export class ResourcesController {
   @Post('course/:courseId/upload')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_BYTES } }))
-  @ApiOperation({ summary: 'Upload a file (PDF, image, etc.) to a course' })
+  @ApiOperation({ summary: 'Upload a PDF, image, text, or Office file to a course (owner/admin)' })
   upload(
     @Param('courseId') courseId: string,
     @CurrentUser() user: UserDocument,
@@ -37,9 +37,9 @@ export class ResourcesController {
   }
 
   @Get('course/:courseId')
-  @ApiOperation({ summary: 'List resources attached to a course' })
-  list(@Param('courseId') courseId: string) {
-    return this.resources.listByCourse(courseId);
+  @ApiOperation({ summary: 'List resources attached to a course (owner / enrolled / admin)' })
+  list(@Param('courseId') courseId: string, @CurrentUser() user: UserDocument) {
+    return this.resources.listByCourse(courseId, user.id, user.role);
   }
 
   @Get(':id/download')

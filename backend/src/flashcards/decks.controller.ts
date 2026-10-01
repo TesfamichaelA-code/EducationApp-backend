@@ -13,6 +13,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserDocument } from '../users/schemas/user.schema';
 import { DecksService } from './decks.service';
 import { CreateDeckDto } from './dto/create-deck.dto';
+import { UpdateDeckDto } from './dto/update-deck.dto';
 import { FlashcardsService } from './flashcards.service';
 
 @ApiTags('decks')
@@ -25,25 +26,25 @@ export class DecksController {
   ) {}
 
   @Post('courses/:courseId/decks')
-  @ApiOperation({ summary: 'Create a deck inside a course' })
+  @ApiOperation({ summary: 'Create a deck inside a course (course owner/admin)' })
   create(
     @Param('courseId') courseId: string,
     @CurrentUser() user: UserDocument,
     @Body() dto: CreateDeckDto,
   ) {
-    return this.decks.create(user.id, courseId, dto);
+    return this.decks.create(user.id, user.role, courseId, dto);
   }
 
   @Get('courses/:courseId/decks')
-  @ApiOperation({ summary: 'List decks in a course' })
-  listByCourse(@Param('courseId') courseId: string) {
-    return this.decks.listByCourse(courseId);
+  @ApiOperation({ summary: 'List decks in a course (owner / enrolled / admin)' })
+  listByCourse(@Param('courseId') courseId: string, @CurrentUser() user: UserDocument) {
+    return this.decks.listByCourse(courseId, user.id, user.role);
   }
 
   @Get('decks/:id')
   @ApiOperation({ summary: 'Get a deck (with card count)' })
-  async findOne(@Param('id') id: string) {
-    const deck = await this.decks.findOne(id);
+  async findOne(@Param('id') id: string, @CurrentUser() user: UserDocument) {
+    const deck = await this.decks.findViewable(id, user.id, user.role);
     const cardCount = await this.flashcards.countByDeck(deck.id);
     return { ...deck.toJSON(), cardCount };
   }
@@ -53,7 +54,7 @@ export class DecksController {
   update(
     @Param('id') id: string,
     @CurrentUser() user: UserDocument,
-    @Body() dto: Partial<CreateDeckDto>,
+    @Body() dto: UpdateDeckDto,
   ) {
     return this.decks.update(id, user.id, user.role, dto);
   }

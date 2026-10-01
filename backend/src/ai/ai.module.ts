@@ -8,15 +8,22 @@
 
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
 
 import { FlashcardsModule } from '../flashcards/flashcards.module';
 import { AiController } from './ai.controller';
 import { AiFeaturesService } from './ai-features.service';
+import { AiQuotaService } from './ai-quota.service';
 import { GeminiProvider } from './providers/gemini.provider';
 import { LLM_PROVIDER } from './providers/llm-provider.interface';
+import { AiUsage, AiUsageSchema } from './schemas/ai-usage.schema';
 
 @Module({
-  imports: [ConfigModule, FlashcardsModule],
+  imports: [
+    ConfigModule,
+    FlashcardsModule,
+    MongooseModule.forFeature([{ name: AiUsage.name, schema: AiUsageSchema }]),
+  ],
   controllers: [AiController],
   providers: [
     GeminiProvider,
@@ -24,6 +31,7 @@ import { LLM_PROVIDER } from './providers/llm-provider.interface';
     // inject LLM_PROVIDER and stay decoupled from Gemini specifics.
     { provide: LLM_PROVIDER, useExisting: GeminiProvider },
     AiFeaturesService,
+    AiQuotaService,
   ],
   exports: [LLM_PROVIDER, GeminiProvider, AiFeaturesService],
 })

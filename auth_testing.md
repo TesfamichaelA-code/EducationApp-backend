@@ -48,14 +48,14 @@ API="http://localhost:8001/api"
 # Login admin
 curl -s -c /tmp/c.txt -X POST "$API/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@learndeck.app","password":"ChangeMe!2026"}' | jq
+  -d '{"email":"admin@learndeck.app","password":"'"$ADMIN_PASSWORD"'"}' | jq
 
 # /me with cookie
 curl -s -b /tmp/c.txt "$API/auth/me" | jq
 
 # /me with Bearer (extract from previous response)
 TOKEN=$(curl -s -c /tmp/c.txt -X POST "$API/auth/login" -H "Content-Type: application/json" \
-  -d '{"email":"admin@learndeck.app","password":"ChangeMe!2026"}' | jq -r .accessToken)
+  -d '{"email":"admin@learndeck.app","password":"'"$ADMIN_PASSWORD"'"}' | jq -r .accessToken)
 curl -s -H "Authorization: Bearer $TOKEN" "$API/auth/me" | jq
 
 # Rotate

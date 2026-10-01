@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -26,7 +25,7 @@ export class NotesController {
   @Post()
   @ApiOperation({ summary: 'Create a note' })
   create(@CurrentUser() user: UserDocument, @Body() dto: CreateNoteDto) {
-    return this.notes.create(user.id, dto);
+    return this.notes.create(user.id, user.role, dto);
   }
 
   @Get('mine')
@@ -43,22 +42,15 @@ export class NotesController {
   }
 
   @Get('course/:courseId')
-  @ApiOperation({ summary: 'Public notes attached to a course' })
-  forCourse(@Param('courseId') courseId: string) {
-    return this.notes.listPublicForCourse(courseId);
+  @ApiOperation({ summary: 'Shared notes attached to a course (owner / enrolled / admin)' })
+  forCourse(@Param('courseId') courseId: string, @CurrentUser() user: UserDocument) {
+    return this.notes.listPublicForCourse(courseId, user.id, user.role);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a note (author only — or public+course)' })
-  async findOne(@Param('id') id: string, @CurrentUser() user: UserDocument) {
-    const note = await this.notes.findOne(id);
-    const isAuthor = note.authorId === user.id;
-    const isPublicCourseNote = !note.isPrivate && !!note.courseId;
-    if (!isAuthor && !isPublicCourseNote) {
-      // Don't leak existence — return 404-equivalent.
-      throw new NotFoundException('Note not found');
-    }
-    return note;
+  findOne(@Param('id') id: string, @CurrentUser() user: UserDocument) {
+    return this.notes.findViewable(id, user.id, user.role);
   }
 
   @Patch(':id')
@@ -68,7 +60,7 @@ export class NotesController {
     @CurrentUser() user: UserDocument,
     @Body() dto: UpdateNoteDto,
   ) {
-    return this.notes.update(id, user.id, dto);
+    return this.notes.update(id, user.id, user.role, dto);
   }
 
   @Delete(':id')

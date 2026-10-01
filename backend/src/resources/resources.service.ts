@@ -1,5 +1,5 @@
 /**
- * ResourcesService — PDF (and arbitrary file) storage on top of MongoDB GridFS.
+ * ResourcesService — course file storage on top of MongoDB GridFS.
  *
  * Why GridFS instead of S3/disk? Zero infra dependencies — GridFS rides on
  * the same Mongo cluster we already operate, files are transactional with
@@ -8,11 +8,14 @@
  * this is perfectly fine; if scale demands it later we can swap the
  * implementation behind this service without touching the controller.
  *
- * Access rules (download):
- *   • the uploader (teacher) — always
- *   • an enrolled student   — always
- *   • any admin             — always
- *   • everyone else         — 403
+ * Access rules:
+ *   • upload          — course owner or admin
+ *   • list / download — course owner, enrolled student, or admin
+ *   • delete          — uploader or admin
+ *
+ * Upload safety: only an allow-list of document/image types is accepted, and
+ * downloads are served with nosniff + a sandboxing CSP so a file can never
+ * execute script on the API origin (stored XSS), whatever its real contents.
  */
 
 import {
@@ -20,16 +23,63 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Response } from 'express';
 import { GridFSBucket, ObjectId } from 'mongodb';
 import { Connection, Model } from 'mongoose';
 
-import { CoursesService } from '../courses/courses.service';
-import { EnrollmentsService } from '../enrollments/enrollments.service';
+import { CourseAccessService } from '../enrollments/course-access.service';
 import { UserRole } from '../users/schemas/user.schema';
 import { Resource, ResourceDocument } from './schemas/resource.schema';
+
+/** MIME types teachers may upload. Anything else is rejected with 415. */
+const ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'text/plain',
+  'text/markdown',
+  'application/msword',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+
+/** Types the browser may display in-tab; everything else is a download. */
+const INLINE_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+]);
+
+const MAX_FILENAME_LENGTH = 200;
+
+/**
+ * Normalize a client filename: multer/busboy decodes the multipart header as
+ * latin1, so UTF-8 names (e.g. "Résumé.pdf") arrive garbled — re-decode them.
+ * Then strip path components and control characters.
+ */
+function sanitizeFilename(raw: string): string {
+  const name = Buffer.from(raw, 'latin1').toString('utf8');
+  const base = name.split(/[\\/]/).pop() ?? '';
+  // eslint-disable-next-line no-control-regex
+  const cleaned = base.replace(/[\u0000-\u001f\u007f]/g, '').trim();
+  return (cleaned || 'file').slice(0, MAX_FILENAME_LENGTH);
+}
+
+/** RFC 6266 Content-Disposition with an ASCII fallback + UTF-8 filename*. */
+function contentDisposition(type: 'inline' | 'attachment', filename: string): string {
+  const ascii = filename.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+  return `${type}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
 
 @Injectable()
 export class ResourcesService {
@@ -38,8 +88,7 @@ export class ResourcesService {
   constructor(
     @InjectModel(Resource.name) private readonly model: Model<Resource>,
     @InjectConnection() private readonly conn: Connection,
-    private readonly courses: CoursesService,
-    private readonly enrollments: EnrollmentsService,
+    private readonly access: CourseAccessService,
   ) {}
 
   private getBucket(): GridFSBucket {
@@ -59,16 +108,19 @@ export class ResourcesService {
     file: Express.Multer.File,
   ): Promise<ResourceDocument> {
     if (!file?.buffer) throw new BadRequestException('No file provided');
-    const course = await this.courses.findOne(courseId);
-    if (course.teacherId !== userId && role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Only the course owner can upload resources');
+    if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+      throw new UnsupportedMediaTypeException(
+        'Unsupported file type. Upload a PDF, image, text, or Office document.',
+      );
     }
+    const course = await this.access.assertCanManage(courseId, userId, role);
+    const filename = sanitizeFilename(file.originalname);
 
     const bucket = this.getBucket();
     const gridfsId = await new Promise<ObjectId>((resolve, reject) => {
-      const upload = bucket.openUploadStream(file.originalname, {
+      const upload = bucket.openUploadStream(filename, {
         contentType: file.mimetype,
-        metadata: { courseId, uploaderId: userId },
+        metadata: { courseId: course.id, uploaderId: userId },
       });
       upload.on('error', reject);
       upload.on('finish', () => resolve(upload.id as ObjectId));
@@ -76,17 +128,18 @@ export class ResourcesService {
     });
 
     return this.model.create({
-      courseId,
+      courseId: course.id,
       uploaderId: userId,
-      filename: file.originalname,
+      filename,
       gridfsId: gridfsId.toString(),
       mimeType: file.mimetype,
       size: file.size,
     });
   }
 
-  listByCourse(courseId: string): Promise<ResourceDocument[]> {
-    return this.model.find({ courseId }).sort({ createdAt: -1 }).exec();
+  async listByCourse(courseId: string, userId: string, role: UserRole): Promise<ResourceDocument[]> {
+    const course = await this.access.assertCanView(courseId, userId, role);
+    return this.model.find({ courseId: course.id }).sort({ createdAt: -1 }).exec();
   }
 
   async streamDownload(
@@ -97,17 +150,26 @@ export class ResourcesService {
   ): Promise<void> {
     const resource = await this.model.findById(id).exec();
     if (!resource) throw new NotFoundException('Resource not found');
+    await this.access.assertCanView(resource.courseId, userId, role);
 
-    const course = await this.courses.findOne(resource.courseId);
-    const enrolled = await this.enrollments.isEnrolled(userId, resource.courseId);
-    if (course.teacherId !== userId && !enrolled && role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Not authorized for this resource');
-    }
+    // Rows uploaded before the allow-list existed may carry any type; serve
+    // those as opaque downloads.
+    const mimeType = ALLOWED_MIME_TYPES.has(resource.mimeType)
+      ? resource.mimeType
+      : 'application/octet-stream';
+    const inline = INLINE_MIME_TYPES.has(mimeType);
 
     res.set({
-      'Content-Type': resource.mimeType,
-      'Content-Disposition': `inline; filename="${resource.filename}"`,
+      'Content-Type': mimeType,
+      'Content-Disposition': contentDisposition(inline ? 'inline' : 'attachment', resource.filename),
       'Content-Length': resource.size.toString(),
+      'X-Content-Type-Options': 'nosniff',
+      // Chrome's PDF viewer refuses to render under a `sandbox` CSP, so PDFs
+      // get a no-script policy instead; nosniff stops type confusion either way.
+      'Content-Security-Policy':
+        mimeType === 'application/pdf'
+          ? "default-src 'none'; object-src 'self'; style-src 'unsafe-inline'"
+          : "default-src 'none'; sandbox",
     });
     const stream = this.getBucket().openDownloadStream(new ObjectId(resource.gridfsId));
     stream.on('error', () => {

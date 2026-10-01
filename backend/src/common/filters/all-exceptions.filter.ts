@@ -18,6 +18,7 @@
 
 import {
   ArgumentsHost,
+  BadRequestException,
   Catch,
   ExceptionFilter,
   HttpException,
@@ -25,6 +26,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { Error as MongooseError } from 'mongoose';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -34,6 +36,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
+
+    // A malformed ObjectId in a URL (e.g. /courses/abc) is a client error,
+    // not a server crash.
+    if (exception instanceof MongooseError.CastError) {
+      exception = new BadRequestException(`Invalid ${exception.path}: ${String(exception.value)}`);
+    }
 
     const status =
       exception instanceof HttpException

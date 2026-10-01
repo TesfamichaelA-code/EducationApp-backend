@@ -17,13 +17,25 @@ export const envValidationSchema = Joi.object({
   PORT: Joi.number().default(8001),
 
   // ── CORS ───────────────────────────────────────────────────────────────────
-  FRONTEND_ORIGIN: Joi.string().allow('').optional(),
+  // Required in production: an unset value means "allow every origin", which
+  // combined with credentialed CORS would let any site act as the user.
+  FRONTEND_ORIGIN: Joi.when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
+
+  // ── API docs ───────────────────────────────────────────────────────────────
+  // Swagger UI is on by default outside production, off in production.
+  ENABLE_SWAGGER: Joi.boolean().optional(),
 
   // ── AI (Gemini) ────────────────────────────────────────────────────────────
   // API key is optional at boot so devs can run the API without AI configured;
   // AI endpoints return 503 until a key is set.
   GEMINI_API_KEY: Joi.string().allow('').optional(),
   GEMINI_MODEL: Joi.string().default('gemini-2.5-flash'),
+  // Per-user cap on AI requests per UTC day (admins are exempt).
+  AI_DAILY_LIMIT: Joi.number().integer().min(1).default(50),
 
   // ── Database ───────────────────────────────────────────────────────────────
   MONGO_URL: Joi.string().required(),

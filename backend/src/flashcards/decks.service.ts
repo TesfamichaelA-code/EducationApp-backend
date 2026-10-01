@@ -1,9 +1,13 @@
 /**
  * DecksService — CRUD + ownership enforcement for decks.
  *
- * Ownership: the teacher who created the deck (or any admin) may update or
- * delete it. Anyone authed may read the listing — gating *card content*
- * access happens further down the stack (FlashcardsService).
+ * Authorization:
+ *   • create        — course owner or admin
+ *   • read / list   — course owner, enrolled student, or admin
+ *   • update/delete — the deck's creator or admin
+ *
+ * `findViewable` is the gate every card-level read goes through, so card
+ * content never leaks to users outside the course.
  */
 
 import {
@@ -14,20 +18,32 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
+import { CourseAccessService } from '../enrollments/course-access.service';
 import { UserRole } from '../users/schemas/user.schema';
 import { CreateDeckDto } from './dto/create-deck.dto';
+import { UpdateDeckDto } from './dto/update-deck.dto';
 import { Deck, DeckDocument } from './schemas/deck.schema';
 
 @Injectable()
 export class DecksService {
-  constructor(@InjectModel(Deck.name) private readonly model: Model<Deck>) {}
+  constructor(
+    @InjectModel(Deck.name) private readonly model: Model<Deck>,
+    private readonly access: CourseAccessService,
+  ) {}
 
-  create(ownerId: string, courseId: string, dto: CreateDeckDto): Promise<DeckDocument> {
-    return this.model.create({ ownerId, courseId, ...dto });
+  async create(
+    ownerId: string,
+    role: UserRole,
+    courseId: string,
+    dto: CreateDeckDto,
+  ): Promise<DeckDocument> {
+    const course = await this.access.assertCanManage(courseId, ownerId, role);
+    return this.model.create({ ownerId, courseId: course.id, ...dto });
   }
 
-  listByCourse(courseId: string): Promise<DeckDocument[]> {
-    return this.model.find({ courseId }).sort({ createdAt: -1 }).exec();
+  async listByCourse(courseId: string, userId: string, role: UserRole): Promise<DeckDocument[]> {
+    const course = await this.access.assertCanView(courseId, userId, role);
+    return this.model.find({ courseId: course.id }).sort({ createdAt: -1 }).exec();
   }
 
   listByCourses(courseIds: string[]): Promise<DeckDocument[]> {
@@ -40,11 +56,18 @@ export class DecksService {
     return deck;
   }
 
+  /** Deck lookup that also enforces course membership for the caller. */
+  async findViewable(id: string, userId: string, role: UserRole): Promise<DeckDocument> {
+    const deck = await this.findOne(id);
+    await this.access.assertCanView(deck.courseId, userId, role);
+    return deck;
+  }
+
   async update(
     id: string,
     userId: string,
     role: UserRole,
-    dto: Partial<CreateDeckDto>,
+    dto: UpdateDeckDto,
   ): Promise<DeckDocument> {
     const deck = await this.findOne(id);
     this.assertOwnership(deck, userId, role);

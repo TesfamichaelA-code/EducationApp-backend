@@ -1,0 +1,23 @@
+# Dependencies & build output
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Secrets — only the .example templates are committed
+.env
+.env.*
+!.env.example
+
+# Local agent/test notes that contain credentials
+memory/
+
+# Logs & OS/editor noise
+*.log
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+.vscode/
+.idea/
